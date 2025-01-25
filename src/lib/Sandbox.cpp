@@ -44,8 +44,49 @@ std::string read_input(std::string const & input_file) {
   return buf.str();
 }
 
-void parent_process() {
+void parent_process(int pipeIn[2], int pipeOut[2], int child_id, std::string const & input, CommandLineArguments const & args) {
+   // Parent process
+  close(pipeIn[0]);
+  close(pipeOut[1]);
 
+  // Write input to child's stdin
+  write(pipeIn[1], input.c_str(), input.size());
+  close(pipeIn[1]);
+
+  // Read child's stdout and stderr
+  std::ofstream out(args.output_file);
+  std::ofstream logStream(args.log_file, std::ios::app);
+
+  char buffer[1024];
+  ssize_t bytesRead;
+  while ((bytesRead = read(pipeOut[0], buffer, sizeof(buffer))) > 0) {
+    std::string chunk(buffer, bytesRead);
+    for (char &c : chunk) {
+      if (c == ',') c = '\t';
+    }
+    out << chunk;
+  }
+
+  close(pipeOut[0]);
+  out.close();
+
+  // Wait for the child process to finish
+  int status;
+  waitpid(child_id, &status, 0);
+
+  if (WIFEXITED(status)) {
+    std::cout << "Process exited with status " << WEXITSTATUS(status) << "\n";
+  } else if (WIFSIGNALED(status)) {
+    std::cout << "Process killed by signal " << WTERMSIG(status) << "\n";
+  }
+
+ // Get resource usage
+ struct rusage usage;
+ getrusage(RUSAGE_CHILDREN, &usage);
+
+ std::cout << "CPU User Time: " << usage.ru_utime.tv_sec + usage.ru_utime.tv_usec / 1e6 << " seconds\n";
+ std::cout << "CPU System Time: " << usage.ru_stime.tv_sec + usage.ru_stime.tv_usec / 1e6 << " seconds\n";
+ std::cout << "Memory Usage: " << usage.ru_maxrss << " KB\n";
 }
 
 char* get_time() {
@@ -54,7 +95,7 @@ char* get_time() {
   return std::ctime(&end_time);
 }
 
-void child_process(int pipeIn[2], int pipeOut[2], std::string const & input, std::string const & exec_name, std::string const & args) {
+void child_process(int pipeIn[2], int pipeOut[2], std::string const & exec_name, std::string const & args) {
   close(pipeIn[1]);
   close(pipeOut[0]);
 
@@ -91,11 +132,11 @@ void Sandbox::launch() {
 
   if (pid == 0) {
     std::cout << "run child" << std::endl;
-    child_process(pipeIn, pipeOut, input, _args.exec_name, _args.exec_args);
+    child_process(pipeIn, pipeOut, _args.exec_name, _args.exec_args);
   }
   else {
     std::cout << "run parent" << std::endl;
-    parent_process();
+    parent_process(pipeIn, pipeOut, pid, input, _args);
   }
 }
 
