@@ -12,3 +12,10 @@ target_link_libraries(sandbox_exe PRIVATE libsandbox)
 add_executable(tests ${CMAKE_CURRENT_SOURCE_DIR}/src/tests/tests.cpp)
 target_include_directories(tests PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/lib)
 target_link_libraries(tests PRIVATE libsandbox)
+ set(SAMPLES_DIR "${CMAKE_BINARY_DIR}/samples")
+target_compile_definitions(tests PUBLIC
+  -D SAMPLES_DIR="${SAMPLES_DIR}"
+)
+
+
+add_subdirectory(samples)
