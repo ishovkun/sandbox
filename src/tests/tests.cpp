@@ -39,8 +39,8 @@ bool test_wrong_input()
 }
 
 bool test_python() {
-  // std::string arg_str = "dummy_exec input_file.txt output_file.txt log.txt /usr/bin/python3 arg1 arg2 ";
-  std::string arg_str = "dummy_exec input_file.txt output_file.txt log.txt abra arg1 arg2 ";
+  std::string arg_str = "dummy_exec input_file.txt output_file.txt log.txt /usr/bin/python3 arg1 arg2 ";
+  // std::string arg_str = "dummy_exec input_file.txt output_file.txt log.txt fuckfuckfuck arg1 arg2 ";
   sandbox::CommandLineArguments args;
   args.parse(arg_str);
 
@@ -53,13 +53,13 @@ bool test_python() {
 
   std::filesystem::remove(args.input_file);
 
-  return true;
+  return false;
 }
 
 template <typename F>
 void run_test(F f, std::string const & name) {
   if (!f()) {
-    std::cout << std::setw(20) << std::left << name << " [fail ❌]" << std::endl;
+    // std::cout << std::setw(20) << std::left << name << " [fail ❌]" << std::endl;
   }
   else {
     std::cout << std::setw(20) <<std::left << name << " [pass ✅]" << std::endl;

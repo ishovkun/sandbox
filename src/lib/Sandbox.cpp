@@ -8,6 +8,9 @@
 #include <sys/wait.h>
 #include <sys/resource.h>
 
+#include <chrono>
+#include <ctime>
+
 #include "Sandbox.hpp"
 #include "FileSystemManager.hpp"
 
@@ -45,6 +48,12 @@ void parent_process() {
 
 }
 
+char* get_time() {
+  auto end = std::chrono::system_clock::now();
+  std::time_t end_time = std::chrono::system_clock::to_time_t(end);
+  return std::ctime(&end_time);
+}
+
 void child_process(int pipeIn[2], int pipeOut[2], std::string const & input, std::string const & exec_name, std::string const & args) {
   close(pipeIn[1]);
   close(pipeOut[0]);
@@ -59,8 +68,12 @@ void child_process(int pipeIn[2], int pipeOut[2], std::string const & input, std
   std::string exec = exec_name + " " + args;
   char * const argv[] = {exec.data(), nullptr};
   std::cout << "launching " << exec << std::endl;
-  execvp(exec_name.data(), argv);
-  throw std::runtime_error("Could not execute command");
+  if (execvp(exec_name.data(), argv) == -1) {
+    std::ofstream out;
+    out.open("failure.txt", std::ios::out | std::ios::app);
+    out << get_time() << " failed to execute" << std::endl;
+    throw std::runtime_error("Could not execute command");
+  }
 }
 
 void Sandbox::launch() {
@@ -71,7 +84,6 @@ void Sandbox::launch() {
     throw std::runtime_error("Could not create pipes");
   }
 
-  std::cout << "forking" << std::endl;
   pid_t pid = fork();
   if (pid == -1) {
     throw std::runtime_error("Could not fork");
