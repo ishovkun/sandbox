@@ -13,6 +13,7 @@
 
 #include "Sandbox.hpp"
 #include "FileSystemManager.hpp"
+#include "logger/Logger.hpp"
 
 namespace sandbox {
 
@@ -21,9 +22,9 @@ Sandbox::Sandbox(CommandLineArguments const & args)
     : _args(args)
 {
   namespace fs = std::filesystem;
-  // if (!fs::exists(args.exec_name)) {
-  //   throw std::invalid_argument("Executable does not exist");
-  // }
+  if (!fs::exists(args.exec_name)) {
+    throw std::invalid_argument("Executable does not exist " + args.exec_name);
+  }
   if (!fs::exists(args.input_file)) {
     throw std::invalid_argument("Input file does not exist");
   }
@@ -50,12 +51,16 @@ void parent_process(int pipeIn[2], int pipeOut[2], int child_id, std::string con
   close(pipeOut[1]);
 
   // Write input to child's stdin
+  std::cout << "writing input '" << input << "'" << std::endl;
   write(pipeIn[1], input.c_str(), input.size());
   close(pipeIn[1]);
 
   // Read child's stdout and stderr
-  std::ofstream out(args.output_file);
-  std::ofstream logStream(args.log_file, std::ios::app);
+  // auto & logger = logging::Logger::ref();
+  // logger.set_file(args.output_file);
+
+  // std::ofstream out(args.output_file);
+  // std::ofstream logStream(args.log_file, std::ios::app);
 
   char buffer[1024];
   ssize_t bytesRead;
@@ -64,11 +69,13 @@ void parent_process(int pipeIn[2], int pipeOut[2], int child_id, std::string con
     for (char &c : chunk) {
       if (c == ',') c = '\t';
     }
-    out << chunk;
+    // out << chunk;
+    // logging::log() << chunk;
+    std::cout << chunk;
   }
 
   close(pipeOut[0]);
-  out.close();
+  // out.close();
 
   // Wait for the child process to finish
   int status;
@@ -84,9 +91,9 @@ void parent_process(int pipeIn[2], int pipeOut[2], int child_id, std::string con
  struct rusage usage;
  getrusage(RUSAGE_CHILDREN, &usage);
 
- std::cout << "CPU User Time: " << usage.ru_utime.tv_sec + usage.ru_utime.tv_usec / 1e6 << " seconds\n";
- std::cout << "CPU System Time: " << usage.ru_stime.tv_sec + usage.ru_stime.tv_usec / 1e6 << " seconds\n";
- std::cout << "Memory Usage: " << usage.ru_maxrss << " KB\n";
+ // std::cout << "CPU User Time: " << usage.ru_utime.tv_sec + usage.ru_utime.tv_usec / 1e6 << " seconds\n";
+ // std::cout << "CPU System Time: " << usage.ru_stime.tv_sec + usage.ru_stime.tv_usec / 1e6 << " seconds\n";
+ // std::cout << "Memory Usage: " << usage.ru_maxrss << " KB\n";
 }
 
 char* get_time() {
@@ -131,11 +138,11 @@ void Sandbox::launch() {
   }
 
   if (pid == 0) {
-    std::cout << "run child" << std::endl;
+    // std::cout << "run child " << _args.exec_name << std::endl;
     child_process(pipeIn, pipeOut, _args.exec_name, _args.exec_args);
   }
   else {
-    std::cout << "run parent" << std::endl;
+    // std::cout << "run parent" << std::endl;
     parent_process(pipeIn, pipeOut, pid, input, _args);
   }
 }
