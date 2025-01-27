@@ -55,7 +55,7 @@ static int setup_seccomp() {
   return 0;
 }
 
-static void setup_mounts(void) {
+static void setup_mounts(std::vector<std::string>const & mount_directories) {
   auto root = std::filesystem::path("/");
   auto curdir = std::filesystem::current_path();
   auto homedir = std::filesystem::path(std::getenv("HOME"));
@@ -64,10 +64,14 @@ static void setup_mounts(void) {
 
   std::filesystem::current_path(homedir);
   // hide home
-  assert(mount("tmpfs", (homedir).c_str(), "tmpfs", MS_RDONLY, NULL) == 0);
-  // cd path
+  assert(mount("tmpfs", homedir.c_str(), "tmpfs", MS_RDONLY, NULL) == 0);
+  for (auto const & dir : mount_directories)
+    assert(mount(dir.c_str(), dir.c_str(), NULL, MS_BIND, NULL) == 0);
+  // cd root
   std::filesystem::current_path(root);
-  // std::filesystem::current_path(curdir);
+  // try to get back into current directory if it is mounted
+  std::error_code ec;
+  std::filesystem::current_path(curdir, ec);
 }
 
 static void write_file(std::string const & file_name, std::string const & content) {
@@ -114,9 +118,8 @@ void write(std::string const& filename, std::string const& content) {
   file.close();
 }
 
-int Sandbox::setup()
+int Sandbox::setup(std::vector<std::string>const & allow_directories)
 {
-	char *const new_argv[] = {"/bin/bash", NULL};
 	uid_t my_uid = getuid();
 	gid_t my_gid = getgid();
 
@@ -125,12 +128,13 @@ int Sandbox::setup()
                              std::string(strerror(errno)));
   }
 	become_uid0(my_uid, my_gid);
-	setup_mounts();
+	setup_mounts(allow_directories);
 
 	assert(unshare(CLONE_NEWUSER) == 0);
 	become_uid_orig(my_uid, my_gid);
 
-	return execvp(new_argv[0], new_argv);
+	// char *const new_argv[] = {"/bin/bash", NULL};
+	// return execvp(new_argv[0], new_argv);
   return 0;
 }
 

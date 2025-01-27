@@ -10,7 +10,7 @@ class ProcessLauncher {
  public:
   ProcessLauncher() = default;
 
-  void run(std::function<int(ParentArgs&)> parentFunc,
+  int run(std::function<int(ParentArgs&)> parentFunc,
            ParentArgs &parentArgs,
            std::function<void(ChildArgs&)> childFunc,
            ChildArgs& childArgs) {
@@ -28,9 +28,10 @@ class ProcessLauncher {
     if (pid == 0) {
       // child process
       childFunc(childArgs);
+      return -1;
     } else {
       // parent process
-      parentFunc(parentArgs);
+      return parentFunc(parentArgs);
     }
   }
 };
