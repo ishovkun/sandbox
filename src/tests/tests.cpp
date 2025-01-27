@@ -3,6 +3,7 @@
 #include <fstream>
 #include <filesystem>
 #include <sys/wait.h>
+#include <thread>
 #include "CommandLineArguments.hpp"
 #include "Sandbox.hpp"
 #include "ProcessLauncher.hpp"
@@ -172,22 +173,39 @@ bool test_pipe_monitor() {
     // dup2(pipeOut[1], STDERR_FILENO);
     auto begin = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed{0};
-    while (elapsed < std::chrono::duration<double>(10000.5)) {
+    int written{0}, toWrite{3};
+    while (elapsed < std::chrono::duration<double>(0.01)) {
       elapsed = std::chrono::high_resolution_clock::now() - begin;
-      std::cout << "beer" << std::endl;
+      if (++written < toWrite)
+        std::cout << "heartbeat" << std::endl;
     }
     return EXIT_SUCCESS;
   };
+
   auto parentFunc = [](test_args & arg) -> int {
     closeWriter(arg);
     sandbox::PipeMonitor monitor(arg.childId);
     // check that pipe is added
-    if (0 != monitor.addPipe(arg.pipeOut[0], std::cout, true))
+    std::ostringstream stdout;
+    if (0 != monitor.addPipe(arg.pipeOut[0], stdout, /*timestamp*/ true))
       return false;
-    std::cout << "added pipe" << std::endl;
+
     monitor.start();
 
-    // monitor.start();
+    auto countLines = [](auto const & s) {
+     return std::count(s.begin(), s.end(), '\n') + 1;
+    };
+    // child should yield 2 lines
+    // resolution should be sufficient enough to have different timestamps
+    auto output{stdout.str()};
+    if (countLines(output) != 2)
+      return false;
+    std::string line1, line2;
+    std::istringstream iss(output);
+    std::getline(iss, line1);
+    std::getline(iss, line2);
+    if (line1 == line2) return false;
+
     auto ret = waitPID0(arg.childId);
     closePipes(arg);
     return ret;
