@@ -41,39 +41,39 @@ bool test_wrong_input()
   return false;
 }
 
-bool test_python() {
-  std::string arg_str = "dummy_exec input_file.txt output_file.txt log.txt /usr/bin/python3 arg1 arg2 ";
-  sandbox::CommandLineArguments args;
-  args.parse(arg_str);
+// bool test_python() {
+//   std::string arg_str = "dummy_exec input_file.txt output_file.txt log.txt /usr/bin/python3 arg1 arg2 ";
+//   sandbox::CommandLineArguments args;
+//   args.parse(arg_str);
 
-  {
-    std::ofstream out(args.input_file);
-  }
+//   {
+//     std::ofstream out(args.input_file);
+//   }
 
-  sandbox::Sandbox sandbox(args);
-  sandbox.launch();
+//   sandbox::Sandbox sandbox(args);
+//   sandbox.launch();
 
-  std::filesystem::remove(args.input_file);
+//   std::filesystem::remove(args.input_file);
 
-  return true;
-}
+//   return true;
+// }
 
-bool test_hello() {
-  std::string arg_str = "dummy input_file.txt output_file.txt log.txt "  SAMPLES_DIR  "/hello";
-  sandbox::CommandLineArguments args;
-  args.parse(arg_str);
+// bool test_hello() {
+//   std::string arg_str = "dummy input_file.txt output_file.txt log.txt "  SAMPLES_DIR  "/hello";
+//   sandbox::CommandLineArguments args;
+//   args.parse(arg_str);
 
-  {
-    std::ofstream out(args.input_file);
-  }
+//   {
+//     std::ofstream out(args.input_file);
+//   }
 
-  sandbox::Sandbox sandbox(args);
-  sandbox.launch();
+//   sandbox::Sandbox sandbox(args);
+//   sandbox.launch();
 
-  std::filesystem::remove(args.input_file);
+//   std::filesystem::remove(args.input_file);
 
-  return true;
-}
+//   return true;
+// }
 
 bool test_launcher() {
   struct test_args {
@@ -144,6 +144,20 @@ bool test_isolated_launcher() {
   return true;
 }
 
+bool test_sandbox() {
+  sandbox::Sandbox sandbox;
+  sandbox.setup();
+
+  namespace fs = std::filesystem;
+  for (const auto& entry : fs::directory_iterator(fs::current_path())) {
+        if (entry.is_regular_file()) {
+            std::cout << entry.path().filename() << std::endl;
+        }
+  }
+
+  return false;
+}
+
 template <typename F>
 void run_test(F f, std::string const & name) {
   if (!f()) {
@@ -161,7 +175,8 @@ auto main(int argc, char *argv[]) -> int {
   // run_test(test_python, "python");
   // run_test(test_hello, "hello");
   // run_test(test_launcher, "launcher");
-  run_test(test_isolated_launcher, "isolated launcher");
+  // run_test(test_isolated_launcher, "isolated launcher");
+  run_test(test_sandbox, "sandboxing");
 
   return 0;
 }

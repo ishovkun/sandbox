@@ -1,18 +1,11 @@
 #pragma once
-#include "CommandLineArguments.hpp"
 
 namespace sandbox {
 
-class Sandbox
-{
-  CommandLineArguments _args;
+class Sandbox {
  public:
-  Sandbox(CommandLineArguments const & args);
-
-  void launch();
-
- private:
+  Sandbox() = default;
+  int setup();
 };
-
 
 }  // end namespace sandbox
