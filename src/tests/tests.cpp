@@ -150,9 +150,9 @@ bool test_sandbox() {
 
   namespace fs = std::filesystem;
   for (const auto& entry : fs::directory_iterator(fs::current_path())) {
-        if (entry.is_regular_file()) {
-            std::cout << entry.path().filename() << std::endl;
-        }
+    if (entry.is_regular_file()) {
+      std::cout << entry.path().filename() << std::endl;
+    }
   }
 
   return false;
