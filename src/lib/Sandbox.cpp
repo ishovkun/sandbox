@@ -13,44 +13,29 @@
 namespace sandbox {
 
 static int setup_seccomp() {
-  // Initialize the seccomp filter
-  scmp_filter_ctx ctx = seccomp_init(SCMP_ACT_KILL); // Kill process if syscall is not allowed
-  if (ctx == NULL) {
-    throw std::runtime_error("Failed to initialize seccomp");
+  scmp_filter_ctx ctx = seccomp_init(SCMP_ACT_ALLOW);
+  if (!ctx) {
+    throw std::runtime_error("Failed to initialize seccomp filter");
   }
 
-  // Allow specific system calls
-  seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(execve), 0);
-  seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(exit), 0);
-  seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(exit_group), 0);
-  seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(read), 0);
-  seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(write), 0);
-  seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(fstat), 0);
-  seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(close), 0);
+  // Add rules to forbid mount and umount
+  if (seccomp_rule_add(ctx, SCMP_ACT_ERRNO(EPERM), SCMP_SYS(mount), 0) != 0) {
+    seccomp_release(ctx);
+    throw std::runtime_error("Failed to add seccomp rule for mount");
+  }
 
-  seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(openat), 0);
-  seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(getdents), 0);
-  seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(getdents64), 0); // Needed for directory iteration
-  seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(stat), 0);
-  seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(statx), 0); // Needed for file metadata
+  if (seccomp_rule_add(ctx, SCMP_ACT_ERRNO(EPERM), SCMP_SYS(umount2), 0) != 0) {
+    seccomp_release(ctx);
+    throw std::runtime_error("Failed to add seccomp rule for umount2");
+  }
 
-  seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(mmap), 0);
-  seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(munmap), 0);
-  seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(brk), 0);
-
-  seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(access), 0);
-  seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(lseek), 0);
-  seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(getcwd), 0);
-  seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(fcntl), 0);
-  // seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(), 0);
-
-  // Load the seccomp filter
-  if (seccomp_load(ctx) < 0) {
+  // Load the filter into the kernel
+  if (seccomp_load(ctx) != 0) {
+    seccomp_release(ctx);
     throw std::runtime_error("Failed to load seccomp filter");
   }
 
-  // Free the filter context
-  // seccomp_release(ctx);
+  seccomp_release(ctx);
   return 0;
 }
 
@@ -143,13 +128,11 @@ int Sandbox::setup(std::vector<std::pair<std::string,std::string>>const & mount_
   }
 	become_uid0(my_uid, my_gid);
 	setup_default_mounts(mount_points);
-  // setup_user_mounts(mount_points);
 
 	assert(unshare(CLONE_NEWUSER) == 0);
 	become_uid_orig(my_uid, my_gid);
 
-	// char *const new_argv[] = {"/bin/bash", NULL};
-	// return execvp(new_argv[0], new_argv);
+  setup_seccomp();
   return 0;
 }
 
