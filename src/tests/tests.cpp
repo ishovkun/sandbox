@@ -4,11 +4,13 @@
 #include <filesystem>
 #include <sys/wait.h>
 #include <sys/resource.h>
+#include <thread>  // sleep
 #include "CommandLineArguments.hpp"
 #include "Sandbox.hpp"
 #include "ProcessLauncher.hpp"
 #include "PipeMonitor.hpp"
 #include "App.hpp"
+#include "writers.hpp"
 
 
 struct test_args {
@@ -200,7 +202,7 @@ bool test_pipe_monitor() {
     sandbox::PipeMonitor monitor(arg.childId);
     // check that pipe is added
     std::ostringstream stdout;
-    if (0 != monitor.addPipe(arg.pipeOut[0], stdout, /*timestamp*/ true))
+    if (0 != monitor.addPipe(arg.pipeOut[0], stdout, sandbox::add_timestamp))
       return false;
 
     monitor.start();
@@ -262,11 +264,32 @@ bool test_resources() {
   return ret == 0;
 }
 
+auto test_timestamp_writer() -> bool {
+  std::string message = "I love coding";
+  std::ostringstream out1, out2;
+  sandbox::add_timestamp(out1, message.data(), message.size());
+  std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  sandbox::add_timestamp(out2, message.data(), message.size());
+  return out1.str() != out2.str();
+}
+
+auto test_comma_replacement() -> bool {
+  std::string message = "This,message,has,4,commas";
+  auto n_commas1 = std::count_if(message.begin(), message.end(), [](char c) { return c == ','; });
+  std::ostringstream out1, out2;
+  sandbox::replace_commas_with_tabs(out1, message.data(), message.size());
+  auto n_commas2 = std::count_if(message.begin(), message.end(), [](char c) { return c == ','; });
+  auto n_tabs2 = std::count_if(message.begin(), message.end(), [](char c) { return c == '\t'; });
+  return n_commas2 == 0 && n_commas1 == n_tabs2;
+}
+
 auto main(int argc, char *argv[]) -> int {
   run_test(test_input, "input");
   run_test(test_wrong_input, "wrong input");
   run_test(test_launcher, "launcher");
   run_test(test_sandbox, "sandboxing");
+  run_test(test_timestamp_writer, "timestamp writer");
+  run_test(test_comma_replacement, "replace commas with tabs writer");
   run_test(test_pipe_monitor, "pipe monitor");
   run_test(test_hello, "hello");
   run_test(test_resources, "resources");

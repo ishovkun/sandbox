@@ -6,6 +6,7 @@
 #include <iostream>  // debug
 #include "ProcessAPI.hpp"
 #include "PipeMonitor.hpp"
+#include "writers.hpp"
 
 namespace sandbox {
 
@@ -54,9 +55,9 @@ auto parent_process(ParentArgs & arg) -> int {
   sandbox::PipeMonitor monitor(arg.childId);
   std::ofstream fout(arg.output_file);
   std::ofstream ferr(arg.log_file);
-  if (0 != monitor.addPipe(arg.pipeOut[0], fout, /*timestamp*/ false))
+  if (0 != monitor.addPipe(arg.pipeOut[0], fout, replace_commas_with_tabs))
     return false;
-  if (0 != monitor.addPipe(arg.pipeErr[0], ferr, /*timestamp*/ true))
+  if (0 != monitor.addPipe(arg.pipeErr[0], ferr, add_timestamp))
     return false;
 
   // post input to child

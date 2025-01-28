@@ -1,11 +1,13 @@
 #pragma once
 #include <ostream>
-#include <chrono>
 #include <vector>
 #include <unordered_map>
 #include <sys/epoll.h>
+#include <functional>
 
 namespace sandbox {
+
+using WriterFunc = std::function<void(std::ostream&, char*, int)>;
 
 class PipeMonitor
 {
@@ -13,21 +15,18 @@ class PipeMonitor
   struct PipeInfo
   {
     std::ostream* os;
-    bool add_ts;
-    PipeInfo(std::ostream& os, bool stampit) : os(&os), add_ts(stampit) {}
+    WriterFunc writer;
+    PipeInfo(std::ostream& os, WriterFunc writer) : os(&os), writer(writer) {}
   };
 
   int _procId{0};
-  std::chrono::time_point<std::chrono::high_resolution_clock> _start;
   std::unordered_map<int, PipeInfo> _pipes;
   int _epollFd;
   struct epoll_event _event;
  public:
-  PipeMonitor(int proc_id,
-              std::chrono::time_point<std::chrono::high_resolution_clock> start =
-              std::chrono::high_resolution_clock::now());
+  PipeMonitor(int proc_id);
 
-  int addPipe(int fd, std::ostream& os, bool addTimestamp);
+  int addPipe(int fd, std::ostream& os, WriterFunc const& editor);
 
   void start();
 };

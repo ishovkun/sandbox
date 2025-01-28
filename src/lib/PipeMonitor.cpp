@@ -4,8 +4,8 @@
 
 namespace sandbox {
 
-PipeMonitor::PipeMonitor(int proc_id, std::chrono::time_point<std::chrono::high_resolution_clock> start)
-    : _procId(proc_id), _start(start)
+PipeMonitor::PipeMonitor(int proc_id)
+    : _procId(proc_id)
 {
   _epollFd = epoll_create1(0);
   if (_epollFd == -1) {
@@ -15,7 +15,7 @@ PipeMonitor::PipeMonitor(int proc_id, std::chrono::time_point<std::chrono::high_
   _event.events = EPOLLIN;
 }
 
-int PipeMonitor::addPipe(int fd, std::ostream &os, bool addTimestamp) {
+int PipeMonitor::addPipe(int fd, std::ostream& os, WriterFunc const& editor) {
   // check that pipe is open
   struct stat statbuf;
   if (fstat(fd, &statbuf) != 0)
@@ -28,7 +28,7 @@ int PipeMonitor::addPipe(int fd, std::ostream &os, bool addTimestamp) {
   if (epoll_ctl(_epollFd, EPOLL_CTL_ADD, fd, &_event) == -1) {
     return 3;
   }
-  _pipes.insert({fd, PipeInfo(os, addTimestamp)});
+  _pipes.insert({fd, PipeInfo(os, editor)});
   return 0;
 }
 
@@ -45,21 +45,20 @@ void PipeMonitor::start() {
     }
 
     for (int i = 0; i < nfds; ++i) {
-      int fd = events[i].data.fd;
-      ssize_t bytesRead = read(fd, buffer, sizeof(buffer) - 1);
+      int const fd = events[i].data.fd;
+      auto const bytesRead = read(fd, buffer, sizeof(buffer) - 1);
 
       if (bytesRead > 0) {
         buffer[bytesRead] = '\0';
         auto it = _pipes.find(fd);
+
+        // sanity check
         if (it == _pipes.end()) {
           throw std::runtime_error("Pipe not found in map");
         }
+
         PipeInfo &pipeInfo = it->second;
-        if (pipeInfo.add_ts) {
-          auto now = std::chrono::high_resolution_clock::now();
-          (*pipeInfo.os) << "[" << now << "] ";
-        }
-        (*pipeInfo.os) << buffer;
+        pipeInfo.writer(*pipeInfo.os, buffer, bytesRead);
       }
       else {
         num_open_pipes--;
