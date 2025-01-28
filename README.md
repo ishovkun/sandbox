@@ -51,10 +51,6 @@ Then, you should see output.txt and log.txt in your working direcoty. log.txt wi
 output.txt will contain a message greeting you.
 
 
-## Limitations
-- Requires Linux with namespace and seccomp support.
-- Does not prevent resource exhaustion (e.g., fork bombs) unless additional controls (e.g., cgroups) are implemented.
-
 ## How it works
 The program starts and parses the user input. Next, the program issues a fork() system call to create a 
 child process.
@@ -65,7 +61,7 @@ Three pipes are created to
 
 The parent process reads the input file and sends the data into the pipe to be read by the child.
 Next, the parent process opens two files for writing the output and log (errors).
-This code uses epoll_wait to monitor the events in the pipes.
+This code uses epoll_wait to monitor the events in the pipes to be able to resolve errors that occur within less than 1 ms.
 
 The child process uses dup2 to route stdout and stderr into the output pipes and routes the input pipe into stdin.
 Next, it uses unshare() to create its own namespace and sets up the filesystem accordingly.
@@ -76,3 +72,10 @@ Then, the child process assigns its uid and gid to the original values.
 Optionally, the child process enforces seccomp rules to block mount and umount system calls.
 Finally, the child process executes the execvp() system call to launch the sandboxed program.
 
+## Potential improvements
+
+- More fine-grained control of seccomp could be implemented
+- cgroups could be use to prevent resource exhaustion (e.g., fork bombs)
+- The code could benefit from an improved logging
+- A proper test suite can be implemented instead of a simple ad-hoc solution
+- An overlay filesystem can be used instead of tempfs to provide writable layers while preserving the base system structure.
