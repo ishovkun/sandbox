@@ -20,10 +20,21 @@ resources, ensuring security and stability.
 - Optionally, install seccomp development libraries (libseccomp-dev on Ubuntu).
 
 ### Build instructions
-In order to build sandbox, you need a Linux
+1. Clone the repository
+``` sh
+git clone https://github.com/ishovkun/sandbox
+cd standbox
+```
+2. Build the project
 
 ``` sh
-git clone
+mkdir build && cd build
+cmake ..
+make
+```
+3. Run tests
+``` sh
+./tests
 ```
 
 ### Limitations
