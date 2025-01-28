@@ -2,6 +2,7 @@
 #include <functional>
 #include <array>
 #include <unistd.h> // pipe
+#include <iostream> // debug
 
 namespace sandbox {
 
@@ -35,6 +36,7 @@ class ProcessLauncher {
       return -1;
     } else {
       // parent process
+      parentArgs.childId = pid;
       return parentFunc(parentArgs);
     }
   }

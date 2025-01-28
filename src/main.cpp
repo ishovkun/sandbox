@@ -1,6 +1,15 @@
 #include <iostream>
+#include <sys/resource.h>
 #include "CommandLineArguments.hpp"
 #include "App.hpp"
+
+void print_usage() {
+  struct rusage usage;
+  getrusage(RUSAGE_CHILDREN | RUSAGE_SELF, &usage);
+  std::cout << "CPU User Time: " << usage.ru_utime.tv_sec + usage.ru_utime.tv_usec / 1e6 << " seconds\n";
+  std::cout << "CPU System Time: " << usage.ru_stime.tv_sec + usage.ru_stime.tv_usec / 1e6 << " seconds\n";
+  std::cout << "Memory Usage: " << usage.ru_maxrss << " KB\n";
+}
 
 auto main(int argc, char *argv[]) -> int {
   sandbox::CommandLineArguments args;

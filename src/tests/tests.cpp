@@ -18,6 +18,17 @@ struct test_args {
   int childId{0};
 };
 
+template <typename F>
+void run_test(F f, std::string const & name) {
+  if (!f()) {
+    std::cout << std::setw(20) << std::left << name << " [fail ❌]" << std::endl;
+  }
+  else {
+    std::cout << std::setw(20) <<std::left << name << " [pass ✅]" << std::endl;
+  }
+}
+
+
 void closePipes(test_args & arg) {
   close(arg.pipeIn[0]);
   close(arg.pipeIn[1]);
@@ -45,7 +56,6 @@ int waitPID0(int pid) {
   int status;
   waitpid(pid, &status, 0);
   if (WIFEXITED(status)) {
-    // std::cout << "Process exited with status " << WEXITSTATUS(status) << "\n";
   } else if (WIFSIGNALED(status)) {
     std::cout << "Process killed by signal " << WTERMSIG(status) << "\n";
   }
@@ -85,48 +95,25 @@ bool test_wrong_input()
   return false;
 }
 
-// bool test_python() {
-//   std::string arg_str = "dummy_exec input_file.txt output_file.txt log.txt /usr/bin/python3 arg1 arg2 ";
-//   sandbox::CommandLineArguments args;
-//   args.parse(arg_str);
-
-//   {
-//     std::ofstream out(args.input_file);
-//   }
-
-//   sandbox::Sandbox sandbox(args);
-//   sandbox.launch();
-
-//   std::filesystem::remove(args.input_file);
-
-//   return true;
-// }
-
 bool test_hello() {
   std::string arg_str = "dummy input_file.txt output_file.txt log.txt "  SAMPLES_DIR  "/hello";
   sandbox::CommandLineArguments args;
   args.parse(arg_str);
-  std::cout << "hello test" << std::endl;
-
   {
     std::ofstream out(args.input_file);
     out << "Sandbox test" << std::endl;
   }
 
-  std::cout << "running app" << std::endl;
-
   sandbox::App app(args);
   auto ret = app.run();
 
-  std::filesystem::remove(args.input_file);
+  namespace fs = std::filesystem;
+  fs::remove(args.input_file);
   std::ifstream in(args.log_file);
-  std::string line;
-  std::cout << "log " << args.log_file << ":" << std::endl;
-  while (getline(in, line)) {
-    std::cout << line << std::endl;
-  }
-  // std::filesystem::remove(args.log_file);
-  // std::filesystem::remove(args.output_file);
+  if (fs::is_empty(args.output_file))
+    return false;
+  fs::remove(args.log_file);
+  fs::remove(args.output_file);
 
   return ret == 0;
 }
@@ -157,9 +144,7 @@ bool test_sandbox() {
     namespace fs = std::filesystem;
     int cnt{0};
     for (const auto& entry : fs::directory_iterator(fs::current_path())) {
-      if (entry.is_regular_file()) {
-        cnt++;
-      }
+      std::cout << "entry " << entry << std::endl;
     }
     // check that current path is unavailable
     std::error_code ec;
@@ -186,7 +171,6 @@ bool test_sandbox() {
     return waitPID0(arg.childId);
   };
   sandbox::ProcessLauncher<test_args, test_args> launcher;
-  // child function should fail
   auto ret = launcher.run(parentFunc, parentArgs, childFunc, childArgs);
   return ret == 0;
 }
@@ -244,24 +228,47 @@ bool test_pipe_monitor() {
   return ret == 0;
 }
 
-template <typename F>
-void run_test(F f, std::string const & name) {
-  if (!f()) {
-    std::cout << std::setw(20) << std::left << name << " [fail ❌]" << std::endl;
+bool test_resources() {
+  std::string arg_str = "dummy input_file.txt output_file.txt log.txt "  SAMPLES_DIR  "/beast";
+  sandbox::CommandLineArguments args;
+  args.parse(arg_str);
+  {
+    std::ofstream out(args.input_file);
+    out << "Sandbox test" << std::endl;
   }
-  else {
-    std::cout << std::setw(20) <<std::left << name << " [pass ✅]" << std::endl;
-  }
+
+  sandbox::App app(args);
+  auto ret = app.run();
+
+  namespace fs = std::filesystem;
+  fs::remove(args.input_file);
+  std::ifstream in(args.log_file);
+
+  if (fs::is_empty(args.output_file))
+    return false;
+
+  fs::remove(args.log_file);
+  fs::remove(args.output_file);
+
+  struct rusage usage;
+  getrusage(RUSAGE_CHILDREN | RUSAGE_SELF, &usage);
+
+  if (usage.ru_maxrss < 250'000)
+    return false;
+  // std::cout << "CPU User Time: " << usage.ru_utime.tv_sec + usage.ru_utime.tv_usec / 1e6 << " seconds\n";
+  // std::cout << "CPU System Time: " << usage.ru_stime.tv_sec + usage.ru_stime.tv_usec / 1e6 << " seconds\n";
+  // std::cout << "Memory Usage: " << usage.ru_maxrss << " KB\n";
+
+  return ret == 0;
 }
 
 auto main(int argc, char *argv[]) -> int {
   run_test(test_input, "input");
   run_test(test_wrong_input, "wrong input");
-  // run_test(test_python, "python");
   run_test(test_launcher, "launcher");
   run_test(test_sandbox, "sandboxing");
   run_test(test_pipe_monitor, "pipe monitor");
   run_test(test_hello, "hello");
-
+  run_test(test_resources, "resources");
   return 0;
 }

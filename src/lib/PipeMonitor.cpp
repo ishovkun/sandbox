@@ -4,21 +4,6 @@
 
 namespace sandbox {
 
-static bool processAlive(pid_t pid) {
-  int status;
-  pid_t result = waitpid(pid, &status, WNOHANG);
-  if (result == 0) {
-    // Child is still running
-    return true;
-  } else if (result > 0) {
-    // Child has exited
-    return false;
-  } else {
-    // Error (e.g., invalid PID)
-    throw std::runtime_error("Failed to check child process status");
-  }
-}
-
 PipeMonitor::PipeMonitor(int proc_id, std::chrono::time_point<std::chrono::high_resolution_clock> start)
     : _procId(proc_id), _start(start)
 {
@@ -51,8 +36,8 @@ void PipeMonitor::start() {
   char buffer[1024];
   struct epoll_event events[2];
 
-  while (processAlive(_procId)) {
-    // Periodically check if the child is still alive
+  int num_open_pipes = _pipes.size();
+  while (num_open_pipes > 0) {
 
     int nfds = epoll_wait(_epollFd, events, _pipes.size(), 100); // Timeout after 100ms
     if (nfds == -1) { // failure, timeout returns 0
@@ -75,6 +60,9 @@ void PipeMonitor::start() {
           (*pipeInfo.os) << "[" << now << "] ";
         }
         (*pipeInfo.os) << buffer;
+      }
+      else {
+        num_open_pipes--;
       }
     }
   }

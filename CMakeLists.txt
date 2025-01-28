@@ -5,12 +5,9 @@ set (CMAKE_CXX_STANDARD 20)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
 
-# set (SANDBOX_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 find_package(Seccomp REQUIRED)
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/src/lib)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/src/logger)
-
 
 add_executable(sandbox_exe ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp)
 target_include_directories(sandbox_exe PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/lib)

@@ -48,7 +48,6 @@ int waitForChild(pid_t pid) {
 }
 
 auto parent_process(ParentArgs & arg) -> int {
-  std::cout << "close pipes" << std::endl;
   close_unused_pipes(arg);
 
   // wire up communication

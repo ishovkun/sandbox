@@ -48,7 +48,6 @@ static int setup_seccomp() {
   if (seccomp_load(ctx) < 0) {
     throw std::runtime_error("Failed to load seccomp filter");
   }
-  // std::cout << "bad" << std::endl;
 
   // Free the filter context
   // seccomp_release(ctx);
@@ -56,53 +55,37 @@ static int setup_seccomp() {
 }
 
 static void setup_default_mounts(std::vector<std::pair<std::string,std::string>>const & mount_points) {
-  auto root = std::filesystem::path("/");
-  auto curdir = std::filesystem::current_path();
-  auto homedir = std::filesystem::path(std::getenv("HOME"));
+  namespace fs = std::filesystem;
+  auto root = fs::path("/");
+  auto curdir = fs::current_path();
+  auto homedir = fs::path(std::getenv("HOME"));
+  auto home = homedir.parent_path();
 
   // Mark all mounts as private to avoid propagating changes to the parent namespace
   assert(mount("none", "/", NULL, MS_REC | MS_SLAVE, NULL) == 0);
 
-  // Remount /mnt as read-write to allow directory creation
-  // if (mount(NULL, "/mnt", NULL, MS_REMOUNT | MS_PRIVATE | MS_REC, NULL) < 0) {
-  //   std::cerr << "Failed to remount /mnt as private and writable: " << strerror(errno) << std::endl;
-  //   throw std::runtime_error("Failed to remount /mnt");
-  // }
-
   // mount user points
   for (auto const &[real_path, mnt_point] : mount_points) {
-    std::cerr << "bind-mounting " << real_path << " to " << mnt_point << std::endl;
+    // std::cerr << "bind-mounting " << real_path << " to " << mnt_point << std::endl;
     std::error_code ec;
     std::filesystem::create_directories(mnt_point, ec);
     if (ec) {
       std::cerr << "Failed to create directory " << mnt_point << ": " << ec.message() << std::endl;
       continue;
     }
-    if (mount(real_path.c_str(), mnt_point.c_str(), NULL, MS_BIND, NULL) != 0) {
+    if (mount(real_path.c_str(), mnt_point.c_str(), NULL, MS_BIND | MS_RDONLY, NULL) != 0) {
       std::cerr << "Failed to bind-mount " << real_path << " to " << mnt_point
                 << std::endl;
     }
   }
 
-  std::filesystem::current_path(homedir);
-  // hide home
-  assert(mount("tmpfs", homedir.c_str(), "tmpfs", MS_RDONLY, NULL) == 0);
-  // for (auto const & dir : mount_directories)
-  //   assert(mount(dir.c_str(), dir.c_str(), NULL, MS_BIND, NULL) == 0);
-  // cd root
   std::filesystem::current_path(root);
-  // try to get back into current directory if it is mounted
+  // hide home
+  assert(mount("tmpfs", home.c_str(), "tmpfs", 0, NULL) == 0);
+  std::filesystem::current_path(root);
   std::error_code ec;
-  std::filesystem::current_path(curdir, ec);
+  std::filesystem::current_path(home, ec);
 }
-
-// static void setup_user_mounts(std::vector<std::pair<std::string,std::string>>const & mount_points)
-// {
-//   for (auto const & [real_path, mnt_point] : mount_points)
-//     if (mount(mnt_point.c_str(), real_path.c_str(), NULL, MS_BIND, NULL) != 0) {
-//       std::cerr << "Failed to mount " << real_path << " to " << mnt_point << std::endl;
-//     }
-// }
 
 
 static void write_file(std::string const & file_name, std::string const & content) {
