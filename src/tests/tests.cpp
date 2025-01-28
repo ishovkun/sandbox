@@ -289,7 +289,7 @@ auto main(int argc, char *argv[]) -> int {
   run_test(test_launcher, "launcher");
   run_test(test_sandbox, "sandboxing");
   run_test(test_timestamp_writer, "timestamp writer");
-  run_test(test_comma_replacement, "replace commas with tabs writer");
+  run_test(test_comma_replacement, "replace commas");
   run_test(test_pipe_monitor, "pipe monitor");
   run_test(test_hello, "hello");
   run_test(test_resources, "resources");
