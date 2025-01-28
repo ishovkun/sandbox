@@ -1,16 +1,5 @@
 #include <filesystem>
 #include <stdexcept>
-// #include <fstream>
-// #include <sstream>
-// #include <iostream>
-
-// #include <sys/types.h>
-// #include <sys/wait.h>
-// #include <sys/resource.h>
-
-// #include <chrono>
-// #include <ctime>
-
 #include "App.hpp"
 #include "ProcessAPI.hpp"
 #include "ProcessLauncher.hpp"

@@ -30,8 +30,10 @@ auto main(int argc, char *argv[]) -> int {
   }
 
   // launch
+  int ret = EXIT_SUCCESS;
   try {
     sandbox::App app(args);
+    ret = app.run();
   }
   catch (const std::exception &e) {
     std::cerr << e.what() << std::endl;
@@ -39,5 +41,5 @@ auto main(int argc, char *argv[]) -> int {
   }
 
   print_resource_utilization();
-  return EXIT_SUCCESS;
+  return ret;
 }

@@ -47,7 +47,8 @@ auto child_process(ChildArgs & arg) -> int {
   namespace fs = std::filesystem;
   std::string exec_dir = fs::path(arg.exec_name).parent_path();
   auto cur_dir = fs::current_path();
-  // fs::path exec_mnt_point = "/tmp/exec_dir/";
+
+  // we bind-mount the executable into /tmp
   fs::path exec_mnt_point = "/tmp/";
   std::string exec_mnt_path = exec_mnt_point / fs::path(arg.exec_name).filename();
   auto exec_name = exec_mnt_path;

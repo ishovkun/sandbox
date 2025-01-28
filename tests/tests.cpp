@@ -111,9 +111,17 @@ bool test_hello() {
 
   namespace fs = std::filesystem;
   fs::remove(args.input_file);
-  std::ifstream in(args.log_file);
-  if (fs::is_empty(args.output_file))
+  if (!fs::exists(args.output_file) || !fs::exists(args.log_file)) {
+    std::cout << "output exists " << fs::exists(args.output_file) << std::endl;
+    std::cout << "log exists " << fs::exists(args.log_file) << std::endl;
     return false;
+  }
+
+  if (fs::is_empty(args.output_file)) {
+    std::cout << "output empty " << fs::is_empty(args.output_file) << std::endl;
+    return false;
+  }
+
   fs::remove(args.log_file);
   fs::remove(args.output_file);
 
@@ -257,9 +265,6 @@ bool test_resources() {
 
   if (usage.ru_maxrss < 250'000)
     return false;
-  // std::cout << "CPU User Time: " << usage.ru_utime.tv_sec + usage.ru_utime.tv_usec / 1e6 << " seconds\n";
-  // std::cout << "CPU System Time: " << usage.ru_stime.tv_sec + usage.ru_stime.tv_usec / 1e6 << " seconds\n";
-  // std::cout << "Memory Usage: " << usage.ru_maxrss << " KB\n";
 
   return ret == 0;
 }

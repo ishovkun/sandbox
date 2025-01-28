@@ -22,9 +22,10 @@ void CommandLineArguments::clear() {
 
 void CommandLineArguments::parse(int argc, const char * const argv[]) {
   std::string input;
+  input += argv[0];
   for (int i = 1; i < argc; i++) {
     std::string token(argv[i]);
-    input += token;
+    input += ' ' + token;
   }
   parse(input);
 }

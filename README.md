@@ -36,8 +36,43 @@ make
 ``` sh
 ./tests
 ```
+4. Run sanbox: 
+Running sandbox requires issuing a command like
+``` sh
+./sandbox input_file output_file log_file path-to-executable [executable-args...]
+```
+where the last argument is optional. For example, you can try running one of the examples
+that is compiled during the build as follows:
+``` sh
+echo "$USER" >> input.txt
+./sandbox input.txt output.txt log.txt samples/hello 
+```
+Then, you should see output.txt and log.txt in your working direcoty. log.txt will be empty, and
+output.txt will contain a message greeting you.
 
-### Limitations
+
+## Limitations
 - Requires Linux with namespace and seccomp support.
 - Does not prevent resource exhaustion (e.g., fork bombs) unless additional controls (e.g., cgroups) are implemented.
+
+## How it works
+The program starts and parses the user input. Next, the program issues a fork() system call to create a 
+child process.
+
+Three pipes are created to 
+- Let the parent process write into child's stdin.
+- Forward the child's stdout and stderr to the parent.
+
+The parent process reads the input file and sends the data into the pipe to be read by the child.
+Next, the parent process opens two files for writing the output and log (errors).
+This code uses epoll_wait to monitor the events in the pipes.
+
+The child process uses dup2 to route stdout and stderr into the output pipes and routes the input pipe into stdin.
+Next, it uses unshare() to create its own namespace and sets up the filesystem accordingly.
+Specifically, it first assigns its uid and gid to 0, and remounts parts of the filesystem.
+It bind-mounts the directory with the executable file to "/tmp", and also mounts
+a temporary filesystem tmpfs into "/home" in order to effectively hide the user data.
+Then, the child process assigns its uid and gid to the original values.
+Optionally, the child process enforces seccomp rules to block mount and umount system calls.
+Finally, the child process executes the execvp() system call to launch the sandboxed program.
 
