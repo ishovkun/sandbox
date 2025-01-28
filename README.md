@@ -2,7 +2,8 @@
 The  Sandbox Project  provides  a minimal  lightweight  sandboxing solution  for
 isolating  and  managing  processes.  The sandbox  leverages  Linux  namespaces,
 seccomp filtering, and custom filesystem mounts to restrict processes' access to
-resources, ensuring security and stability.
+resources, ensuring security and stability. No sudo is required (unless you're on an
+Azure VM that does some filesystem trickery that won't let my code run :-( )!
 
 ## Features
 
