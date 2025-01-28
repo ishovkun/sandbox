@@ -13,4 +13,20 @@ resources, ensuring security and stability.
 - Time-Stamped Error Logs: Capture and log errors from the child process with precise timestamps.
 - Resource Monitoring: Measure CPU usage, memory utilization, and other resource metrics for both the sandbox and the isolated process.
 
-# seccomp libseccomp-dev
+## Building the project
+### Prerequisites
+- Linux kernel (minimum 3.8) with namespace and seccomp support.
+- A recent GCC or Clang compiler that support C++-20 (GCC 10 or later Clang 12 or later).
+- Optionally, install seccomp development libraries (libseccomp-dev on Ubuntu).
+
+### Build instructions
+In order to build sandbox, you need a Linux
+
+``` sh
+git clone
+```
+
+### Limitations
+- Requires Linux with namespace and seccomp support.
+- Does not prevent resource exhaustion (e.g., fork bombs) unless additional controls (e.g., cgroups) are implemented.
+
