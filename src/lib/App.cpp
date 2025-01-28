@@ -1,19 +1,19 @@
 #include <filesystem>
 #include <stdexcept>
-#include <fstream>
-#include <sstream>
-#include <iostream>
+// #include <fstream>
+// #include <sstream>
+// #include <iostream>
 
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <sys/resource.h>
+// #include <sys/types.h>
+// #include <sys/wait.h>
+// #include <sys/resource.h>
 
-#include <chrono>
-#include <ctime>
+// #include <chrono>
+// #include <ctime>
 
 #include "App.hpp"
-#include "FileSystemManager.hpp"
-#include "logger/Logger.hpp"
+#include "ProcessAPI.hpp"
+#include "ProcessLauncher.hpp"
 
 namespace sandbox {
 
@@ -35,116 +35,97 @@ App::App(CommandLineArguments const & args)
   }
 }
 
-std::string read_input(std::string const & input_file) {
-  std::ifstream iss(input_file);
-  if (!iss.is_open()) {
-    throw std::runtime_error("Could not open input file");
-  }
-  std::ostringstream buf;
-  buf << iss.rdbuf();
-  return buf.str();
-}
+// std::string read_input(std::string const & input_file) {
+//   std::ifstream iss(input_file);
+//   if (!iss.is_open()) {
+//     throw std::runtime_error("Could not open input file");
+//   }
+//   std::ostringstream buf;
+//   buf << iss.rdbuf();
+//   return buf.str();
+// }
 
-void parent_process(int pipeIn[2], int pipeOut[2], int child_id, std::string const & input, CommandLineArguments const & args) {
-   // Parent process
-  close(pipeIn[0]);
-  close(pipeOut[1]);
+// void parent_process(int pipeIn[2], int pipeOut[2], int child_id, std::string const Read child's stdout and stderr
+//   // auto & logger = logging::Logger::ref();
+//   // logger.set_file(args.output_file);
 
-  // Write input to child's stdin
-  std::cout << "writing input '" << input << "'" << std::endl;
-  write(pipeIn[1], input.c_str(), input.size());
-  close(pipeIn[1]);
+//   // std::ofstream out(args.output_file);
+//   // std::ofstream logStream(args.log_file, std::ios::app);
 
-  // Read child's stdout and stderr
-  // auto & logger = logging::Logger::ref();
-  // logger.set_file(args.output_file);
+//   char buffer[1024];
+//   ssize_t bytesRead;
+//   while ((bytesRead = read(pipeOut[0], buffer, sizeof(buffer))) > 0) {
+//     std::string chunk(buffer, bytesRead);
+//     for (char &c : chunk) {
+//       if (c == ',') c = '\t';
+//     }
+//     // out << chunk;
+//     // logging::log() << chunk;
+//     std::cout << chunk;
+//   }
 
-  // std::ofstream out(args.output_file);
-  // std::ofstream logStream(args.log_file, std::ios::app);
+//   close(pipeOut[0]);
+//   // out.close();
 
-  char buffer[1024];
-  ssize_t bytesRead;
-  while ((bytesRead = read(pipeOut[0], buffer, sizeof(buffer))) > 0) {
-    std::string chunk(buffer, bytesRead);
-    for (char &c : chunk) {
-      if (c == ',') c = '\t';
-    }
-    // out << chunk;
-    // logging::log() << chunk;
-    std::cout << chunk;
-  }
+//   // Wait for the child process to finish
+//   int status;
+//   waitpid(child_id, &status, 0);
 
-  close(pipeOut[0]);
-  // out.close();
+//   if (WIFEXITED(status)) {
+//     std::cout << "Process exited with status " << WEXITSTATUS(status) << "\n";
+//   } else if (WIFSIGNALED(status)) {
+//     std::cout << "Process killed by signal " << WTERMSIG(status) << "\n";
+//   }
 
-  // Wait for the child process to finish
-  int status;
-  waitpid(child_id, &status, 0);
+//  // Get resource usage
+//  struct rusage usage;
+//  getrusage(RUSAGE_CHILDREN, &usage);
 
-  if (WIFEXITED(status)) {
-    std::cout << "Process exited with status " << WEXITSTATUS(status) << "\n";
-  } else if (WIFSIGNALED(status)) {
-    std::cout << "Process killed by signal " << WTERMSIG(status) << "\n";
-  }
+//  // std::cout << "CPU User Time: " << usage.ru_utime.tv_sec + usage.ru_utime.tv_usec / 1e6 << " seconds\n";
+//  // std::cout << "CPU System Time: " << usage.ru_stime.tv_sec + usage.ru_stime.tv_usec / 1e6 << " seconds\n";
+//  // std::cout << "Memory Usage: " << usage.ru_maxrss << " KB\n";
+// }
 
- // Get resource usage
- struct rusage usage;
- getrusage(RUSAGE_CHILDREN, &usage);
+// char* get_time() {
+//   auto end = std::chrono::system_clock::now();
+//   std::time_t end_time = std::chrono::system_clock::to_time_t(end);
+//   return std::ctime(&end_time);
+// }
 
- // std::cout << "CPU User Time: " << usage.ru_utime.tv_sec + usage.ru_utime.tv_usec / 1e6 << " seconds\n";
- // std::cout << "CPU System Time: " << usage.ru_stime.tv_sec + usage.ru_stime.tv_usec / 1e6 << " seconds\n";
- // std::cout << "Memory Usage: " << usage.ru_maxrss << " KB\n";
-}
+// void child_process(int pipeIn[2], int pipeOut[2], std::string const & exec_name, std::string const & args) {
+//   close(pipeIn[1]);
+//   close(pipeOut[0]);
 
-char* get_time() {
-  auto end = std::chrono::system_clock::now();
-  std::time_t end_time = std::chrono::system_clock::to_time_t(end);
-  return std::ctime(&end_time);
-}
+//   dup2(pipeIn[0], STDIN_FILENO);
+//   dup2(pipeOut[1], STDOUT_FILENO);
+//   dup2(pipeOut[1], STDERR_FILENO);
 
-void child_process(int pipeIn[2], int pipeOut[2], std::string const & exec_name, std::string const & args) {
-  close(pipeIn[1]);
-  close(pipeOut[0]);
+//   close(pipeIn[0]);
+//   close(pipeOut[1]);
 
-  dup2(pipeIn[0], STDIN_FILENO);
-  dup2(pipeOut[1], STDOUT_FILENO);
-  dup2(pipeOut[1], STDERR_FILENO);
+//   std::string exec = exec_name + " " + args;
+//   char * const argv[] = {exec.data(), nullptr};
+//   std::cout << "launching " << exec << std::endl;
+//   if (execvp(exec_name.data(), argv) == -1) {
+//     std::ofstream out;
+//     out.open("failure.txt", std::ios::out | std::ios::app);
+//     out << get_time() << " failed to execute" << std::endl;
+//     throw std::runtime_error("Could not execute command");
+//   }
+// }
 
-  close(pipeIn[0]);
-  close(pipeOut[1]);
+int App::run() {
+  ParentArgs parent_args;
+  parent_args.input_file = _args.input_file;
+  parent_args.output_file = _args.output_file;
+  parent_args.log_file = _args.log_file;
 
-  std::string exec = exec_name + " " + args;
-  char * const argv[] = {exec.data(), nullptr};
-  std::cout << "launching " << exec << std::endl;
-  if (execvp(exec_name.data(), argv) == -1) {
-    std::ofstream out;
-    out.open("failure.txt", std::ios::out | std::ios::app);
-    out << get_time() << " failed to execute" << std::endl;
-    throw std::runtime_error("Could not execute command");
-  }
-}
-
-void App::launch() {
-  auto input = read_input(_args.input_file);
-
-  int pipeIn[2], pipeOut[2];
-  if (pipe(pipeIn) == -1 || pipe(pipeOut) == -1) {
-    throw std::runtime_error("Could not create pipes");
-  }
-
-  pid_t pid = fork();
-  if (pid == -1) {
-    throw std::runtime_error("Could not fork");
-  }
-
-  if (pid == 0) {
-    // std::cout << "run child " << _args.exec_name << std::endl;
-    child_process(pipeIn, pipeOut, _args.exec_name, _args.exec_args);
-  }
-  else {
-    // std::cout << "run parent" << std::endl;
-    parent_process(pipeIn, pipeOut, pid, input, _args);
-  }
+  ChildArgs child_args;
+  child_args.exec_name = _args.exec_name;
+  child_args.exec_args = _args.exec_args;
+  sandbox::ProcessLauncher<ParentArgs, ChildArgs> launcher;
+  auto ret = launcher.run(parent_process, parent_args, child_process, child_args);
+  return ret;
 }
 
 }  // end namespace sandbox

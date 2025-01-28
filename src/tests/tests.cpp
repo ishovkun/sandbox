@@ -3,16 +3,18 @@
 #include <fstream>
 #include <filesystem>
 #include <sys/wait.h>
-#include <thread>
+#include <sys/resource.h>
 #include "CommandLineArguments.hpp"
 #include "Sandbox.hpp"
 #include "ProcessLauncher.hpp"
 #include "PipeMonitor.hpp"
+#include "App.hpp"
 
 
 struct test_args {
   std::array<int,2> pipeIn{-1, -1};
   std::array<int,2> pipeOut{-1, -1};
+  std::array<int,2> pipeErr{-1, -1};
   int childId{0};
 };
 
@@ -21,15 +23,22 @@ void closePipes(test_args & arg) {
   close(arg.pipeIn[1]);
   close(arg.pipeOut[0]);
   close(arg.pipeOut[1]);
+  close(arg.pipeErr[0]);
+  close(arg.pipeErr[1]);
 }
 
 void routeStdOut(test_args & arg) {
   dup2(arg.pipeOut[1], STDOUT_FILENO);
 }
 
+void routeStdErr(test_args & arg) {
+  dup2(arg.pipeErr[1], STDERR_FILENO);
+}
+
 void closeWriter(test_args & arg) {
   close(arg.pipeIn[0]);
   close(arg.pipeOut[1]);
+  close(arg.pipeErr[1]);
 }
 
 int waitPID0(int pid) {
@@ -93,22 +102,34 @@ bool test_wrong_input()
 //   return true;
 // }
 
-// bool test_hello() {
-//   std::string arg_str = "dummy input_file.txt output_file.txt log.txt "  SAMPLES_DIR  "/hello";
-//   sandbox::CommandLineArguments args;
-//   args.parse(arg_str);
+bool test_hello() {
+  std::string arg_str = "dummy input_file.txt output_file.txt log.txt "  SAMPLES_DIR  "/hello";
+  sandbox::CommandLineArguments args;
+  args.parse(arg_str);
+  std::cout << "hello test" << std::endl;
 
-//   {
-//     std::ofstream out(args.input_file);
-//   }
+  {
+    std::ofstream out(args.input_file);
+    out << "Sandbox test" << std::endl;
+  }
 
-//   sandbox::Sandbox sandbox(args);
-//   sandbox.launch();
+  std::cout << "running app" << std::endl;
 
-//   std::filesystem::remove(args.input_file);
+  sandbox::App app(args);
+  auto ret = app.run();
 
-//   return true;
-// }
+  std::filesystem::remove(args.input_file);
+  std::ifstream in(args.log_file);
+  std::string line;
+  std::cout << "log " << args.log_file << ":" << std::endl;
+  while (getline(in, line)) {
+    std::cout << line << std::endl;
+  }
+  // std::filesystem::remove(args.log_file);
+  // std::filesystem::remove(args.output_file);
+
+  return ret == 0;
+}
 
 bool test_launcher() {
   test_args parentArgs, childArgs;
@@ -130,7 +151,8 @@ bool test_sandbox() {
   auto childFunc = [](test_args & arg) -> int {
     auto curdir = std::filesystem::current_path();
     sandbox::Sandbox sandbox;
-    sandbox.setup();
+    if (sandbox.setup() != 0)
+      throw std::runtime_error("sandbox setup failed");
 
     namespace fs = std::filesystem;
     int cnt{0};
@@ -150,6 +172,13 @@ bool test_sandbox() {
     if (!ec) {
       std::exit(EXIT_FAILURE);
     }
+
+    {
+      std::ofstream out("should_be_deleted.txt");
+      out << "this will disappear " << std::endl;
+    }
+
+
     std::exit(EXIT_SUCCESS);
   };
   auto parentFunc = [](test_args & arg) -> int {
@@ -215,7 +244,6 @@ bool test_pipe_monitor() {
   return ret == 0;
 }
 
-
 template <typename F>
 void run_test(F f, std::string const & name) {
   if (!f()) {
@@ -228,13 +256,12 @@ void run_test(F f, std::string const & name) {
 
 auto main(int argc, char *argv[]) -> int {
   run_test(test_input, "input");
-  // run_test(test_wrong_input, "wrong input");
+  run_test(test_wrong_input, "wrong input");
   // run_test(test_python, "python");
-  // run_test(test_hello, "hello");
   run_test(test_launcher, "launcher");
-  // run_test(test_isolated_launcher, "isolated launcher");
   run_test(test_sandbox, "sandboxing");
   run_test(test_pipe_monitor, "pipe monitor");
+  run_test(test_hello, "hello");
 
   return 0;
 }

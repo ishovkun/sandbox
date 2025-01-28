@@ -19,17 +19,6 @@ static bool processAlive(pid_t pid) {
   }
 }
 
-// std::string getCurrentTimestamp(std::chrono::time_point<std::chrono::high_resolution_clock> start) {
-//   auto now = std::chrono::high_resolution_clock::now();
-//   return std::to_string(now);
-//   // auto duration = now - start;
-//   // auto seconds = std::chrono::duration_cast<std::chrono::seconds>(duration);
-//   // auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(duration - seconds);
-//   // std::stringstream ss;
-//   // ss << seconds.count() << "." << milliseconds.count();
-//   // return std::format("{}", now);
-// }
-
 PipeMonitor::PipeMonitor(int proc_id, std::chrono::time_point<std::chrono::high_resolution_clock> start)
     : _procId(proc_id), _start(start)
 {

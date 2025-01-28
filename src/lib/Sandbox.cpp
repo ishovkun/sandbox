@@ -55,24 +55,55 @@ static int setup_seccomp() {
   return 0;
 }
 
-static void setup_mounts(std::vector<std::string>const & mount_directories) {
+static void setup_default_mounts(std::vector<std::pair<std::string,std::string>>const & mount_points) {
   auto root = std::filesystem::path("/");
   auto curdir = std::filesystem::current_path();
   auto homedir = std::filesystem::path(std::getenv("HOME"));
 
+  // Mark all mounts as private to avoid propagating changes to the parent namespace
   assert(mount("none", "/", NULL, MS_REC | MS_SLAVE, NULL) == 0);
+
+  // Remount /mnt as read-write to allow directory creation
+  // if (mount(NULL, "/mnt", NULL, MS_REMOUNT | MS_PRIVATE | MS_REC, NULL) < 0) {
+  //   std::cerr << "Failed to remount /mnt as private and writable: " << strerror(errno) << std::endl;
+  //   throw std::runtime_error("Failed to remount /mnt");
+  // }
+
+  // mount user points
+  for (auto const &[real_path, mnt_point] : mount_points) {
+    std::cerr << "bind-mounting " << real_path << " to " << mnt_point << std::endl;
+    std::error_code ec;
+    std::filesystem::create_directories(mnt_point, ec);
+    if (ec) {
+      std::cerr << "Failed to create directory " << mnt_point << ": " << ec.message() << std::endl;
+      continue;
+    }
+    if (mount(real_path.c_str(), mnt_point.c_str(), NULL, MS_BIND, NULL) != 0) {
+      std::cerr << "Failed to bind-mount " << real_path << " to " << mnt_point
+                << std::endl;
+    }
+  }
 
   std::filesystem::current_path(homedir);
   // hide home
   assert(mount("tmpfs", homedir.c_str(), "tmpfs", MS_RDONLY, NULL) == 0);
-  for (auto const & dir : mount_directories)
-    assert(mount(dir.c_str(), dir.c_str(), NULL, MS_BIND, NULL) == 0);
+  // for (auto const & dir : mount_directories)
+  //   assert(mount(dir.c_str(), dir.c_str(), NULL, MS_BIND, NULL) == 0);
   // cd root
   std::filesystem::current_path(root);
   // try to get back into current directory if it is mounted
   std::error_code ec;
   std::filesystem::current_path(curdir, ec);
 }
+
+// static void setup_user_mounts(std::vector<std::pair<std::string,std::string>>const & mount_points)
+// {
+//   for (auto const & [real_path, mnt_point] : mount_points)
+//     if (mount(mnt_point.c_str(), real_path.c_str(), NULL, MS_BIND, NULL) != 0) {
+//       std::cerr << "Failed to mount " << real_path << " to " << mnt_point << std::endl;
+//     }
+// }
+
 
 static void write_file(std::string const & file_name, std::string const & content) {
   std::ofstream file;
@@ -118,7 +149,7 @@ void write(std::string const& filename, std::string const& content) {
   file.close();
 }
 
-int Sandbox::setup(std::vector<std::string>const & allow_directories)
+int Sandbox::setup(std::vector<std::pair<std::string,std::string>>const & mount_points)
 {
 	uid_t my_uid = getuid();
 	gid_t my_gid = getgid();
@@ -128,7 +159,8 @@ int Sandbox::setup(std::vector<std::string>const & allow_directories)
                              std::string(strerror(errno)));
   }
 	become_uid0(my_uid, my_gid);
-	setup_mounts(allow_directories);
+	setup_default_mounts(mount_points);
+  // setup_user_mounts(mount_points);
 
 	assert(unshare(CLONE_NEWUSER) == 0);
 	become_uid_orig(my_uid, my_gid);

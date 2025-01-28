@@ -15,14 +15,18 @@ class ProcessLauncher {
            std::function<void(ChildArgs&)> childFunc,
            ChildArgs& childArgs) {
 
-    std::array<int,2> pipeIn{-1, -1}, pipeOut{-1, -1};
-    if (pipe(pipeIn.data()) == -1 || pipe(pipeOut.data()) == -1) {
+    std::array<int,2> pipeIn{-1, -1}, pipeOut{-1, -1}, pipeErr{-1, -1};
+    if (pipe(pipeIn.data()) == -1 ||
+        pipe(pipeOut.data()) == -1 ||
+        pipe(pipeErr.data()) == -1) {
       throw std::runtime_error("Could not create pipes");
     }
     parentArgs.pipeIn = pipeIn;
     parentArgs.pipeOut = pipeOut;
+    parentArgs.pipeErr = pipeErr;
     childArgs.pipeIn = pipeIn;
     childArgs.pipeOut = pipeOut;
+    childArgs.pipeErr = pipeErr;
 
     int pid = fork();
     if (pid == 0) {

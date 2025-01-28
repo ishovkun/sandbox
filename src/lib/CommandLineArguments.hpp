@@ -24,7 +24,7 @@ struct CommandLineArguments {
   void parse(std::string const &input);
 
   void clear();
-  private:
+ private:
   void check();
 };
 

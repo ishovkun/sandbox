@@ -9,7 +9,7 @@ class App
  public:
   App(CommandLineArguments const & args);
 
-  void launch();
+  int run();
 
  private:
 };
