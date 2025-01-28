@@ -1,4 +1,6 @@
+#ifdef USE_SECCOMP
 #include <seccomp.h>
+#endif
 #include <stdexcept>
 #include <iostream>
 #include <sys/mount.h>
@@ -13,6 +15,7 @@
 namespace sandbox {
 
 static int setup_seccomp() {
+#ifdef USE_SECCOMP
   scmp_filter_ctx ctx = seccomp_init(SCMP_ACT_ALLOW);
   if (!ctx) {
     throw std::runtime_error("Failed to initialize seccomp filter");
@@ -36,6 +39,7 @@ static int setup_seccomp() {
   }
 
   seccomp_release(ctx);
+#endif
   return 0;
 }
 
