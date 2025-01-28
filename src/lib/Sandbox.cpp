@@ -39,7 +39,7 @@ static int setup_seccomp() {
   return 0;
 }
 
-static void setup_default_mounts(std::vector<std::pair<std::string,std::string>>const & mount_points) {
+static void setup_mounts(std::vector<std::pair<std::string,std::string>>const & mount_points) {
   namespace fs = std::filesystem;
   auto root = fs::path("/");
   auto curdir = fs::current_path();
@@ -127,7 +127,7 @@ int Sandbox::setup(std::vector<std::pair<std::string,std::string>>const & mount_
                              std::string(strerror(errno)));
   }
 	become_uid0(my_uid, my_gid);
-	setup_default_mounts(mount_points);
+	setup_mounts(mount_points);
 
 	assert(unshare(CLONE_NEWUSER) == 0);
 	become_uid_orig(my_uid, my_gid);

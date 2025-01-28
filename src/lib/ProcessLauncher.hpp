@@ -6,6 +6,12 @@
 
 namespace sandbox {
 
+/*
+** This is a wrapper class for launching a child process from a parent process.
+** It saves the pipe descriptors in the parent and child arguments.
+** It then launches a child process that executes the child function.
+** The parent executes the parent function.
+ */
 template <typename ParentArgs, typename ChildArgs>
 class ProcessLauncher {
  public:

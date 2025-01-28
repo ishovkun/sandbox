@@ -8,6 +8,11 @@
 #include "PipeMonitor.hpp"
 #include "writers.hpp"
 
+/*
+** This file implements the parent process of the sandbox.
+** See parent_process for more details.
+*/
+
 namespace sandbox {
 
 static void close_unused_pipes(ParentArgs & arg) {
@@ -25,9 +30,12 @@ static void close_remaining_pipes(ParentArgs & arg) {
 std::string read_input(std::string const & input_file) {
   // check read permissions
   namespace fs = std::filesystem;
+  if (!fs::exists(input_file)) {
+    throw std::invalid_argument("Input file does not exist");
+  }
   if (!fs::is_regular_file(input_file) ||
       (fs::status(input_file).permissions() & fs::perms::owner_read) == fs::perms::none) {
-    throw std::invalid_argument("Input file is not executable");
+    throw std::invalid_argument("Do not have read permissions on input file");
   }
   std::ifstream iss(input_file);
   if (!iss.is_open()) {
@@ -48,6 +56,9 @@ int waitForChild(pid_t pid) {
   }
 }
 
+// This function implements the parent process logic.
+// It launches the output monitor that writes child's stderr and stdout into
+// the corresponding files.
 auto parent_process(ParentArgs & arg) -> int {
   close_unused_pipes(arg);
 

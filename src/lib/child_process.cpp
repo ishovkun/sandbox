@@ -5,6 +5,10 @@
 #include "ProcessAPI.hpp"
 #include "Sandbox.hpp"
 
+/*
+** This file implements the child process.
+*/
+
 namespace sandbox {
 
 static void check_can_execute(std::string const & file) {
@@ -19,7 +23,7 @@ static void check_can_execute(std::string const & file) {
   }
 }
 
-auto child_process(ChildArgs & arg) -> int {
+void setup_pipes(ChildArgs & arg) {
   close(arg.pipeIn[1]);
   close(arg.pipeOut[0]);
   close(arg.pipeErr[0]);
@@ -31,13 +35,20 @@ auto child_process(ChildArgs & arg) -> int {
   close(arg.pipeIn[0]);
   close(arg.pipeOut[1]);
   close(arg.pipeErr[1]);
+}
+
+// this function implements the clid process logic
+// it sets up the pipes (STDIN, STDERR, STDOUT)
+// Next, it sandboxes the execution contexts and launches
+// the executable.
+auto child_process(ChildArgs & arg) -> int {
+  setup_pipes(arg);
 
   namespace fs = std::filesystem;
   std::string exec_dir = fs::path(arg.exec_name).parent_path();
   auto cur_dir = fs::current_path();
   // fs::path exec_mnt_point = "/tmp/exec_dir/";
-  fs::path exec_mnt_point = "/tmp/exec_dir/";
-  // fs::path exec_mnt_point = "/home/runner";
+  fs::path exec_mnt_point = "/tmp/";
   std::string exec_mnt_path = exec_mnt_point / fs::path(arg.exec_name).filename();
   auto exec_name = exec_mnt_path;
 

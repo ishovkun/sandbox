@@ -5,10 +5,8 @@
 namespace sandbox {
 
 /*
-**
-** ./sandboxed_exec input output logfile <executable> <executable args ...>
-** where <executable> is any executable that is chosen by the user and
-** <executable_args> are the arguments needed by the executable
+** This structure holds the input arguments
+** given to the sandbox
 */
 struct CommandLineArguments {
   std::string exec_name;
@@ -19,11 +17,14 @@ struct CommandLineArguments {
 
   CommandLineArguments();
 
+  // parse the arguments passed to the main executable
   void parse(int argc, const char *const argv[]);
 
+  // handy wrapper for testing
   void parse(std::string const &input);
 
   void clear();
+
  private:
   void check();
 };
